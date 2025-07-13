@@ -46,3 +46,6 @@ bin/
 
 ### properties ###
 *.properties
+
+### logs ###
+/logs
