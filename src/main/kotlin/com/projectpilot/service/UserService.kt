@@ -32,22 +32,15 @@ object UserService {
         }
     }
 
-    suspend fun authenticateUser(email: String, password: String): Boolean {
+    suspend fun authenticateUser(email: String, password: String): User? {
 
         val user = client.findOne("users", JsonObject().put("email", email), null).await()
 
         return if (user != null) {
-            val storedPassword = user.getString("password")
-            val isMatch = storedPassword == password
-            if (isMatch) {
-                logger.info { "Password match for user: $email" }
-            } else {
-                logger.warn { "Password mismatch for user: $email" }
-            }
-            isMatch
+            user.mapTo(User::class.java)
         } else {
-            logger.warn { "No user found with email: $email" }
-            false
+            logger.error { "No user found with email: $email" }
+            null
         }
     }
 }

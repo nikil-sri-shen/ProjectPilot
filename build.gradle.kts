@@ -25,6 +25,14 @@ dependencies {
     // JSON serialization
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.19.1")
 
+    // JWT and authentication
+    implementation("io.jsonwebtoken:jjwt-api:0.12.6")
+    runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.6")
+    runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.6")
+
+    // Password hashing
+    implementation("at.favre.lib:bcrypt:0.10.2")
+
     runtimeOnly("io.netty:netty-resolver-dns-native-macos:4.1.109.Final:osx-aarch_64")
 
 }

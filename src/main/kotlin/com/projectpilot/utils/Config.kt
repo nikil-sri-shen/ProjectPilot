@@ -13,4 +13,5 @@ object Config {
     val server_port: Int get() = properties.getProperty("SERVER.PORT").toInt()
     val mongoUri: String get() = properties.getProperty("MONGO.URI")
     val mongoDbName: String get() = properties.getProperty("MONGO.DB_NAME")
+    val jwtSecret: String get() = properties.getProperty("JWT.SECRET")
 }

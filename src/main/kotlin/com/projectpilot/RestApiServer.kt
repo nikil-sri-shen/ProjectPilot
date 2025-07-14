@@ -14,9 +14,11 @@ private val logger = KotlinLogging.logger {}
 class RestApiServer: CoroutineVerticle() {
     override suspend fun start() {
         MongoProvider.init(vertx)
+        logger.info("Initializing ProjectPilot Rest API Server...")
 
         val router: Router = Router.router(vertx)
         router.route().handler(BodyHandler.create())
+        logger.info("Router initialized with BodyHandler")
 
         router.get("/").handler { ctx ->
             ctx.response()
@@ -26,6 +28,7 @@ class RestApiServer: CoroutineVerticle() {
         }
 
         authRoutes(vertx, router)
+        logger.info("Auth routes registered")
 
         vertx.createHttpServer()
             .requestHandler(router)
@@ -38,5 +41,6 @@ class RestApiServer: CoroutineVerticle() {
 
 fun main() {
     val vertx: Vertx = Vertx.vertx()
+    logger.info("Starting ProjectPilot Rest API Server...")
     vertx.deployVerticle(RestApiServer())
 }
