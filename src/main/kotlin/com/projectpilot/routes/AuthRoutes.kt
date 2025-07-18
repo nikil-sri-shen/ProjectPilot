@@ -26,11 +26,11 @@ fun authRoutes(vertx: Vertx, router: Router) {
 
     authRouter.post("/signup").handler(::handleSignup)
     authRouter.post("/signin").handler(::handleSignin)
+    authRouter.post("/logout").handler(::handleLogout)
     // ✅ Protected route using JWT middleware
-    authRouter.get("/profile")
-        .handler(jwtMiddleware())// custom extension
-        .handler(::handleProfile)
-
+    authRouter.get("/profile").handler(jwtMiddleware()).handler(::handleProfile)
+    authRouter.put("/profile").handler(jwtMiddleware()).handler(::handleUpdateProfile)
+    authRouter.delete("/profile").handler(jwtMiddleware()).handler(::handleDeleteProfile).handler(::handleLogout)
     router.mountSubRouter("/auth", authRouter)
     logger.info { "Auth routes mounted under /auth" }
 }
@@ -60,6 +60,8 @@ fun handleSignup(ctx: RoutingContext) {
                 val safeUser = SafeUser(
                     email = user.email,
                     username = user.username,
+                    bio = user.bio,
+                    status = user.status
                 )
 
                 ctx.response()
@@ -91,7 +93,7 @@ fun handleSignin(ctx: RoutingContext) {
             val email = json.getString("email")
             val password = json.getString("password")
 
-            val user = UserService.authenticateUser(email, password)
+            val user = UserService.getUserByEmail(email)
             val valid = BCrypt.verifyer().verify(password.toCharArray(), user?.password?.toCharArray())
             logger.info("Login attempt for email: $email, valid: ${valid.verified}")
             if (valid.verified) {
@@ -101,6 +103,8 @@ fun handleSignin(ctx: RoutingContext) {
                 val safeUser = SafeUser(
                     email = user!!.email,
                     username = user.username,
+                    bio = user.bio,
+                    status = user.status
                 )
 
                 ctx.response()
@@ -124,7 +128,98 @@ fun handleSignin(ctx: RoutingContext) {
     }
 }
 
+fun handleLogout(ctx: RoutingContext) {
+    ctx.response()
+        .addCookie(
+            Cookie.cookie("sys-token", "")
+                .setHttpOnly(true)
+                .setMaxAge(0) // Expire immediately
+        )
+        .setStatusCode(200)
+        .putHeader("Content-Type", "application/json")
+        .end(JsonObject().put("message", "Logged out successfully").encode())
+}
+
 fun handleProfile(ctx: RoutingContext) {
-    val email = ctx.get<String>("userEmail") // from token
-    ctx.response().end("Welcome, $email")
+    CoroutineScope(Dispatchers.IO).launch {
+        val email = ctx.get<String>("userEmail")
+
+        try {
+            val user = UserService.getUserByEmail(email)
+
+            if (user != null) {
+                val safeUser = JsonObject()
+                    .put("email", user.email)
+                    .put("username", user.username)
+                    .put("bio", user.bio ?: "")
+                    .put("status", user.status ?: "")
+                    .put("createAt", user.createAt.toString())
+
+                ctx.response()
+                    .putHeader("Content-Type", "application/json")
+                    .setStatusCode(200)
+                    .end(safeUser.encode())
+            } else {
+                ctx.response().setStatusCode(404).end("User not found")
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Error retrieving profile for $email" }
+            ctx.response().setStatusCode(500).end("Internal Server Error")
+        }
+    }
+}
+
+fun handleUpdateProfile(ctx: RoutingContext) {
+    CoroutineScope(Dispatchers.IO).launch {
+        val email = ctx.get<String>("userEmail")
+        val body = ctx.body().asString()
+
+        try {
+            val updates = mapper.readValue<Map<String, String>>(body)
+
+            // Optionally, restrict updatable fields
+            val allowedFields = listOf("username", "bio", "status")
+            val filteredUpdates = updates.filterKeys { it in allowedFields }
+
+            if (filteredUpdates.isEmpty()) {
+                ctx.response().setStatusCode(400).end("No valid fields to update.")
+                return@launch
+            }
+
+            UserService.updateUser(email, filteredUpdates)
+
+            ctx.response()
+                .setStatusCode(200)
+                .putHeader("Content-Type", "application/json")
+                .end(JsonObject().put("message", "Profile updated successfully").encode())
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to update profile for $email" }
+            ctx.response().setStatusCode(500).end("Error updating profile")
+        }
+    }
+}
+
+fun handleDeleteProfile(ctx: RoutingContext) {
+    CoroutineScope(Dispatchers.IO).launch {
+        val email = ctx.get<String>("userEmail")
+        try {
+            val deleted = UserService.deleteUserByEmail(email)
+            if (deleted) {
+                ctx.response()
+                    .addCookie(
+                        Cookie.cookie("sys-token", "")
+                            .setHttpOnly(true)
+                            .setMaxAge(0) // Expire immediately
+                    )
+                    .setStatusCode(200)
+                    .putHeader("Content-Type", "application/json")
+                    .end(JsonObject().put("message", "Account deleted successfully").encode())
+            } else {
+                ctx.response().setStatusCode(404).end("User not found")
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Error deleting profile for $email" }
+            ctx.response().setStatusCode(500).end("Error deleting profile")
+        }
+    }
 }

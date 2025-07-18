@@ -32,7 +32,7 @@ object UserService {
         }
     }
 
-    suspend fun authenticateUser(email: String, password: String): User? {
+    suspend fun getUserByEmail(email: String): User? {
 
         val user = client.findOne("users", JsonObject().put("email", email), null).await()
 
@@ -41,6 +41,52 @@ object UserService {
         } else {
             logger.error { "No user found with email: $email" }
             null
+        }
+    }
+
+    suspend fun updateUser(email: String, updatedFields: Map<String, String>?) {
+        if (updatedFields == null || updatedFields.isEmpty()) {
+            logger.warn { "No fields provided for update for user: $email" }
+            return
+        }
+        val existingUser = client.findOne("users", JsonObject().put("email", email), null).await()
+        if (existingUser == null) {
+            logger.error { "User not found: $email" }
+            return
+        }
+        val updateObject = JsonObject().apply {
+            updatedFields.forEach { (key, value) -> put(key, value) }
+        }
+        try {
+            val result = client.updateCollection(
+                "users",
+                JsonObject().put("email", email),
+                JsonObject().put("\$set", updateObject)
+            ).await()
+
+            if (result.docModified.toInt() == 1) {
+                logger.info { "User updated successfully: $email" }
+            } else {
+                logger.warn { "User update had no effect: $email" }
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Error updating user: $email" }
+        }
+    }
+
+    suspend fun deleteUserByEmail(email: String): Boolean {
+        val existingUser = client.findOne("users", JsonObject().put("email", email), null).await()
+        if (existingUser == null) {
+            logger.error { "User not found: $email" }
+            false
+        }
+        val query = JsonObject().put("email", email)
+        return try {
+            val result = client.removeDocuments("users", query).await()
+            result.removedCount.toInt() == 1
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to delete user: $email" }
+            false
         }
     }
 }
