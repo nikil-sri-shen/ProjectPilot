@@ -37,6 +37,7 @@ object UserService {
         val user = client.findOne("users", JsonObject().put("email", email), null).await()
 
         return if (user != null) {
+            logger.info { "User found: $email" }
             user.mapTo(User::class.java)
         } else {
             logger.error { "No user found with email: $email" }
@@ -83,10 +84,23 @@ object UserService {
         val query = JsonObject().put("email", email)
         return try {
             val result = client.removeDocuments("users", query).await()
+            logger.info { "User deleted: $email" }
             result.removedCount.toInt() == 1
         } catch (e: Exception) {
             logger.error(e) { "Failed to delete user: $email" }
             false
         }
     }
+
+    suspend fun updatePasswordByEmail(email: String, newPassword: String): Boolean {
+        return try {
+            val update = JsonObject().put("\$set", JsonObject().put("password", newPassword))
+            val res = client.updateCollection("users", JsonObject().put("email", email), update).await()
+            res.docModified.toInt() == 1
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to update password for $email" }
+            false
+        }
+    }
+
 }

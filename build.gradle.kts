@@ -11,6 +11,7 @@ repositories {
 
 dependencies {
     testImplementation(kotlin("test"))
+    // Vert.x dependencies
     implementation("io.vertx:vertx-core:4.5.1")
     implementation("io.vertx:vertx-web:4.5.1")
     implementation("io.vertx:vertx-lang-kotlin-coroutines:4.5.1")
@@ -32,6 +33,9 @@ dependencies {
 
     // Password hashing
     implementation("at.favre.lib:bcrypt:0.10.2")
+
+    // Email sending
+    implementation("com.sun.mail:jakarta.mail:2.0.1")
 
     runtimeOnly("io.netty:netty-resolver-dns-native-macos:4.1.109.Final:osx-aarch_64")
 
