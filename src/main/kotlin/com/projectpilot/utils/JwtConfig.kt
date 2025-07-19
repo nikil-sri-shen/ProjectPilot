@@ -12,7 +12,7 @@ object JwtConfig {
 
     private const val validityInMs = 24 * 60 * 60 * 1000 // 1 day
 
-    fun generateToken(email: String, username: String): String {
+    fun generateToken(email: String, username: String, role: String): String {
         val now = Date()
         val expiry = Date(now.time + validityInMs)
 
@@ -21,6 +21,7 @@ object JwtConfig {
             .setIssuedAt(now)
             .setExpiration(expiry)
             .claim("username", username) // Add custom claim
+            .claim("role", role) // Default role, can be customized later
             .signWith(key, SignatureAlgorithm.HS256)
             .compact()
     }
@@ -36,7 +37,8 @@ object JwtConfig {
             // Extract relevant data (excluding password)
             mapOf(
                 "email" to claims.subject,
-                "username" to (claims["username"] as? String ?: "")
+                "username" to (claims["username"] as? String ?: ""),
+                "role" to (claims["role"] as? String ?: "") // Default to STUDENT if no role is provided
             )
         } catch (e: Exception) {
             null

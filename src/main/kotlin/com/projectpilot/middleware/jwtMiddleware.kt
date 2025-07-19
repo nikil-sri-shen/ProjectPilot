@@ -5,6 +5,8 @@ import io.vertx.core.Handler
 import io.vertx.ext.web.RoutingContext
 import io.vertx.ext.web.Route
 
+private val logger = mu.KotlinLogging.logger {}
+
 fun jwtMiddleware() : Handler<RoutingContext> = Handler { ctx ->
     val token = ctx.request().getHeader("Authorization")?.removePrefix("Bearer ")
         ?: ctx.request().getHeader("Cookie")?.split(";")
@@ -12,6 +14,7 @@ fun jwtMiddleware() : Handler<RoutingContext> = Handler { ctx ->
             ?.substringAfter("sys-token=")
 
     if (token.isNullOrEmpty()) {
+        logger.warn("Unauthorized access attempt: No token provided $token")
         ctx.response().setStatusCode(401).end("Unauthorized: No token provided")
         return@Handler
     }
@@ -21,6 +24,7 @@ fun jwtMiddleware() : Handler<RoutingContext> = Handler { ctx ->
         if (claims != null) {
             ctx.put("userEmail", claims["email"])
             ctx.put("username", claims["username"])
+            ctx.put("role", claims["role"]) // Default to STUDENT if no role is provided
             ctx.next()
         } else {
             ctx.response().setStatusCode(401).end("Unauthorized: Invalid token")

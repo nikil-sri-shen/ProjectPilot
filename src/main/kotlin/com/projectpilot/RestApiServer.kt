@@ -2,6 +2,7 @@ package com.projectpilot
 
 import com.projectpilot.db.MongoProvider
 import com.projectpilot.routes.authRoutes
+import com.projectpilot.routes.boardRoutes
 import com.projectpilot.utils.Config
 import io.vertx.core.Vertx
 import io.vertx.ext.web.Router
@@ -28,7 +29,8 @@ class RestApiServer: CoroutineVerticle() {
         }
 
         authRoutes(vertx, router)
-        logger.info("Auth routes registered")
+        boardRoutes(vertx, router)
+        logger.info("Routes registered")
 
         vertx.createHttpServer()
             .requestHandler(router)

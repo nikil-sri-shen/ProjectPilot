@@ -10,7 +10,7 @@ import mu.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
 
-object EmailVerificationService {
+object EmailService {
     private val client: MongoClient = MongoProvider.getClient()
 
     suspend fun createVerificationToken(email: String): String? {

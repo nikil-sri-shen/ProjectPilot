@@ -10,7 +10,7 @@ import io.vertx.core.http.Cookie
 import at.favre.lib.crypto.bcrypt.BCrypt
 import com.projectpilot.middleware.jwtMiddleware
 import com.projectpilot.models.SafeUser
-import com.projectpilot.service.EmailVerificationService
+import com.projectpilot.service.EmailService
 import com.projectpilot.utils.Mailer
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
@@ -62,7 +62,7 @@ fun handleSignup(ctx: RoutingContext) {
             }
 
             // Create and send verification code
-            val token = EmailVerificationService.createVerificationToken(user.email)
+            val token = EmailService.createVerificationToken(user.email)
             if (token != null) {
                 val subject = "Verify your ProjectPilot Email"
                 val content = """
@@ -110,8 +110,9 @@ fun handleEmailVerification(ctx: RoutingContext) {
             val token = body.getString("token")
             val password = body.getString("password")
             val username = body.getString("username")
+            val role = body.getString("role") ?: "STUDENT" // Default to USER if not provided
 
-            if (!EmailVerificationService.verifyToken(email, token)) {
+            if (!EmailService.verifyToken(email, token)) {
                 ctx.response().setStatusCode(400).end("Invalid or expired verification token")
                 return@launch
             }
@@ -123,18 +124,19 @@ fun handleEmailVerification(ctx: RoutingContext) {
                 username = username,
                 createAt = Instant.now(),
                 bio = "",
-                status = ""
+                status = "",
+                role = role
             )
 
             val success = UserService.registerUser(userToSave)
             if (success) {
                 logger.info { "Verified and registered user: $email" }
-                val jwt = JwtConfig.generateToken(email, username)
+                val jwt = JwtConfig.generateToken(email, username, role)
                 ctx.response()
-                    .addCookie(Cookie.cookie("sys-token", jwt).setHttpOnly(true).setMaxAge(60 * 60))
+                    .addCookie(Cookie.cookie("sys-token", jwt).setHttpOnly(true).setMaxAge(60 * 60).setPath("/"))
                     .putHeader("Content-Type", "application/json")
                     .setStatusCode(201)
-                    .end(JsonObject.mapFrom(SafeUser(email, username, "", "")).put("token", jwt).encode())
+                    .end(JsonObject.mapFrom(SafeUser(email, username, "", "", role)).put("token", jwt).encode())
             } else {
                 ctx.response().setStatusCode(500).end("User registration failed")
             }
@@ -160,13 +162,14 @@ fun handleSignin(ctx: RoutingContext) {
             logger.info("Login attempt for email: $email, valid: ${valid.verified}")
             if (valid.verified) {
                 logger.info { "Login successful for email: $email" }
-                val token = JwtConfig.generateToken(email, user?.username ?: "unknown")
+                val token = JwtConfig.generateToken(email, user?.username ?: "unknown", user?.role ?: "STUDENT")
 
                 val safeUser = SafeUser(
                     email = user!!.email,
                     username = user.username,
                     bio = user.bio,
-                    status = user.status
+                    status = user.status,
+                    role = user.role
                 )
 
                 ctx.response()
@@ -174,6 +177,7 @@ fun handleSignin(ctx: RoutingContext) {
                         Cookie.cookie("sys-token", token)
                             .setHttpOnly(true)
                             .setMaxAge(60 * 60)
+                            .setPath("/")
                     )
                     .putHeader("Content-Type", "application/json")
                     .setStatusCode(200)
@@ -197,6 +201,7 @@ fun handleLogout(ctx: RoutingContext) {
             Cookie.cookie("sys-token", "")
                 .setHttpOnly(true)
                 .setMaxAge(0) // Expire immediately
+                .setPath("/")
         )
         .setStatusCode(200)
         .putHeader("Content-Type", "application/json")
@@ -278,6 +283,7 @@ fun handleDeleteProfile(ctx: RoutingContext) {
                         Cookie.cookie("sys-token", "")
                             .setHttpOnly(true)
                             .setMaxAge(0) // Expire immediately
+                            .setPath("/")
                     )
                     .setStatusCode(200)
                     .putHeader("Content-Type", "application/json")
@@ -308,7 +314,7 @@ fun handleRequestPasswordReset(ctx: RoutingContext) {
                 return@launch
             }
 
-            val token = EmailVerificationService.createVerificationToken(email)
+            val token = EmailService.createVerificationToken(email)
             if (token != null) {
                 val subject = "Reset your ProjectPilot password"
                 val content = """
@@ -364,7 +370,7 @@ fun handleResetPassword(ctx: RoutingContext) {
                 return@launch
             }
 
-            val verified = EmailVerificationService.verifyToken(email, token)
+            val verified = EmailService.verifyToken(email, token)
             if (!verified) {
                 ctx.response().setStatusCode(400).end("Invalid or expired token")
                 logger.warn("Password reset failed: Invalid or expired token for email: $email")

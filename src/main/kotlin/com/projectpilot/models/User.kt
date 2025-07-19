@@ -13,6 +13,7 @@ data class User @JsonCreator constructor(
     @JsonProperty("password") val password : String,
     @JsonProperty("bio") val bio: String? = null,
     @JsonProperty("status") val status: String? = null,
+    @JsonProperty("role") val role: String?,
     @JsonProperty("createdAt")val createAt : Instant? = Instant.now()
 )
 
@@ -20,5 +21,6 @@ data class SafeUser(
     val email: String,
     val username: String,
     val bio: String?,
-    val status: String?
+    val status: String?,
+    val role: String? // Default role is STUDENT
 )
