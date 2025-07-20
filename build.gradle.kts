@@ -25,6 +25,7 @@ dependencies {
     implementation("io.vertx:vertx-mongo-client:4.5.1")
     // JSON serialization
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.19.1")
+    implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.19.2")
 
     // JWT and authentication
     implementation("io.jsonwebtoken:jjwt-api:0.12.6")

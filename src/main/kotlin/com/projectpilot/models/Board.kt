@@ -14,7 +14,7 @@ data class BoardMember @JsonCreator constructor(
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class Board @JsonCreator constructor(
-    @JsonProperty("_id") val id: String = UUID.randomUUID().toString(),
+    @JsonProperty("_id") var _id: String,
     @JsonProperty("name") val name: String,
     @JsonProperty("description") val description: String,
     @JsonProperty("createdBy") val createdBy: String,

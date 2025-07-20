@@ -2,6 +2,7 @@ package com.projectpilot.service
 
 import com.projectpilot.db.MongoProvider
 import com.projectpilot.models.Board
+import com.projectpilot.utils.Mailer
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.mongo.MongoClient
@@ -12,6 +13,15 @@ private val logger = KotlinLogging.logger {}
 
 object BoardService {
     private val client: MongoClient = MongoProvider.getClient()
+
+    suspend fun generateUniqueBoardId(): String {
+        var id: String
+        do {
+            id = (100000..999999).random().toString()
+            val exists = client.findOne("boards", JsonObject().put("_id", id), null).await() != null
+        } while (exists)
+        return id
+    }
 
     suspend fun createBoard(board: Board): Int {
         val exists = client.findOne("boards", JsonObject().put("name", board.name), null).await()
@@ -88,6 +98,49 @@ object BoardService {
             logger.error(e) { "Failed to update board with ID: $boardId" }
             return false
         }
+    }
+
+    suspend fun sendBoardInvite(boardId: String, toEmail: String, role: String): Int {
+        try {
+            val board = client.findOne("boards", JsonObject().put("_id", boardId), null).await()
+            if (board == null) {
+                logger.error { "Board not found: $boardId" }
+                return 1
+            }
+
+            val memberExists = client.findOne("users", JsonObject().put("email", toEmail), null).await()
+            if (memberExists == null) {
+                logger.warn { "User not exists: $toEmail" }
+                return 2
+            }
+
+            val code = EmailService.createVerificationToken(toEmail)
+            if (code == null) return 3
+
+            val boardName = board.getString("name")
+            val subject = "Invitation to join board: $boardName"
+            val content = """
+            You have been invited to join the board "$boardName" as $role.
+            
+            Your verification code is: $code
+
+            Please use this code in the ProjectPilot app to accept the invitation.
+            This code will expire in 10 minutes.
+        """.trimIndent()
+
+            if(Mailer.sendVerificationCode(toEmail, code, subject, content)) return 4 // success
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to send board invite to $toEmail" }
+            return 5 // error
+        }
+        return 0 // default case, should not happen
+    }
+
+    suspend fun verifyBoardInvite(boardId: String, email: String, token: String, role: String): Boolean {
+        val isValid = EmailService.verifyToken(email, token)
+        if (!isValid) return false
+
+        return addMemberToBoard(boardId, email, role)
     }
 
     suspend fun addMemberToBoard(boardId: String, memberEmail: String, role: String): Boolean {
@@ -239,6 +292,22 @@ object BoardService {
         } catch (e: Exception) {
             logger.error(e) { "Failed to retrieve board summary for ID: $boardId" }
             null
+        }
+    }
+
+    suspend fun getAllBoards(): List<Board> {
+        return try {
+            val results = client.find("boards", JsonObject()).await()
+            if (results.isEmpty()) {
+                logger.warn { "No boards found in the database" }
+                emptyList()
+            } else {
+                logger.info { "Found ${results.size} boards in the database" }
+                results.map { it.mapTo(Board::class.java) }
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to retrieve all boards" }
+            emptyList()
         }
     }
 }
