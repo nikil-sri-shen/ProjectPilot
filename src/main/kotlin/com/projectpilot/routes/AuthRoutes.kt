@@ -32,12 +32,11 @@ fun authRoutes(vertx: Vertx, router: Router) {
     authRouter.post("/logout").handler(::handleLogout)
     authRouter.post("/request-password-reset").handler(::handleRequestPasswordReset)
     authRouter.post("/reset-password").handler(::handleResetPassword)
-    // ✅ Protected route using JWT middleware
     authRouter.get("/profile").handler(jwtMiddleware()).handler(::handleProfile)
     authRouter.put("/profile").handler(jwtMiddleware()).handler(::handleUpdateProfile)
     authRouter.delete("/profile").handler(jwtMiddleware()).handler(::handleDeleteProfile).handler(::handleLogout)
     router.mountSubRouter("/auth", authRouter)
-    logger.info { "Auth routes mounted under /auth" }
+    logger.info { "Auth routes registered" }
 }
 
 fun handleSignup(ctx: RoutingContext) {

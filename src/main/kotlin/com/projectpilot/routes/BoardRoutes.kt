@@ -5,7 +5,7 @@ import com.projectpilot.middleware.jwtMiddleware
 import com.projectpilot.models.Board
 import com.projectpilot.models.BoardMember
 import com.projectpilot.service.BoardService
-import com.projectpilot.service.BoardService.generateUniqueBoardId
+import com.projectpilot.utils.CommonUtils
 import com.projectpilot.utils.mapper
 import io.vertx.core.Vertx
 import io.vertx.ext.web.Router
@@ -24,12 +24,14 @@ fun boardRoutes(vertx: Vertx, router: Router) {
     boardRouter.get("/myBoards").handler(jwtMiddleware()).handler(authorizeRole("admin","professor")).handler(::handleMyBoards)
     boardRouter.get("/boards").handler(jwtMiddleware()).handler(authorizeRole("admin","professor")).handler(::handleBoards)
     boardRouter.get("/:boardId").handler(jwtMiddleware()).handler(authorizeRole("admin","professor")).handler(::handleBoardsWithId)
+    boardRouter.delete("/:boardId").handler(jwtMiddleware()).handler(authorizeRole("admin")).handler(::handleDeleteBoard)
     boardRouter.post("/:boardId/update").handler(jwtMiddleware()).handler(authorizeRole("admin")).handler(::handleBoardUpdate)
     boardRouter.post("/:boardId/invite").handler(jwtMiddleware()).handler(authorizeRole("admin")).handler(::handlerSendInvite)
     boardRouter.post("/:boardId/verify-invite").handler(jwtMiddleware()).handler(authorizeRole("admin","professor")).handler(::handlerVerifyInvite)
     boardRouter.get("/:boardId/members").handler(jwtMiddleware()).handler(authorizeRole("admin","professor")).handler(::handleBoardMembers)
     boardRouter.post("/:boardId/members").handler(jwtMiddleware()).handler(authorizeRole("admin")).handler(::handleRemoveBoardMembers)
     boardRouter.get("/:boardId/summary").handler(jwtMiddleware()).handler(authorizeRole("admin","professor")).handler(::handleBoardSummary)
+    boardRouter.get("/:boardId/projects").handler(jwtMiddleware()).handler(authorizeRole("admin","professor")).handler(::handleProjectsByBoardId)
 
     router.mountSubRouter("/board", boardRouter)
     logger.info { "Board routes registered" }
@@ -46,7 +48,7 @@ fun handleCreateBoard(ctx: RoutingContext) {
                 ctx.response().setStatusCode(400).end("Missing board name or description")
                 return@launch
             }
-            val boardId = generateUniqueBoardId()
+            val boardId = CommonUtils.generateUniqueBoardId()
             val board = Board(
                 _id = boardId,
                 name = boardName,
@@ -357,6 +359,65 @@ fun handleBoards(ctx: RoutingContext){
             }
         } catch (e: Exception) {
             logger.error(e) { "Error retrieving all boards" }
+            ctx.response().setStatusCode(500).end("Internal server error")
+        }
+    }
+}
+
+fun handleDeleteBoard(ctx: RoutingContext){
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            val email = ctx.get<String>("userEmail")
+            if (email == null) {
+                ctx.response().setStatusCode(403).end("Unauthorized access")
+                logger.warn { "Unauthorized access attempt by null email" }
+                return@launch
+            }
+
+            val boardId = ctx.pathParam("boardId")
+            if (boardId.isBlank()) {
+                ctx.response().setStatusCode(400).end("Board ID is required")
+                logger.warn { "Board ID is missing in request" }
+                return@launch
+            }
+
+            val success = BoardService.deleteBoard(boardId)
+            if (success) {
+                ctx.response().setStatusCode(204).end("Board deleted successfully")
+                logger.info { "Board deleted successfully: $boardId" }
+            } else {
+                ctx.response().setStatusCode(404).end("Board not found or deletion failed")
+                logger.warn { "Failed to delete board with ID: $boardId" }
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Error deleting board with ID: ${ctx.pathParam("boardId")}" }
+            ctx.response().setStatusCode(500).end("Internal server error")
+        }
+    }
+}
+
+fun handleProjectsByBoardId(ctx: RoutingContext) {
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            val boardId = ctx.pathParam("boardId")
+            if (boardId.isBlank()) {
+                ctx.response().setStatusCode(400).end("Board ID is required")
+                logger.warn { "Board ID is missing in request" }
+                return@launch
+            }
+
+            val projects = BoardService.getProjectsWithBoardId(boardId)
+            if (projects.isEmpty()) {
+                ctx.response().setStatusCode(404).end("No projects found for board $boardId")
+                logger.info { "No projects found for board: $boardId" }
+            } else {
+                ctx.response()
+                    .putHeader("Content-Type", "application/json")
+                    .end(mapper.writeValueAsString(projects))
+                logger.info { "Projects retrieved successfully for board: $boardId" }
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Error retrieving projects for board with ID: ${ctx.pathParam("boardId")}" }
             ctx.response().setStatusCode(500).end("Internal server error")
         }
     }

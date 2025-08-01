@@ -19,5 +19,6 @@ data class Board @JsonCreator constructor(
     @JsonProperty("description") val description: String,
     @JsonProperty("createdBy") val createdBy: String,
     @JsonProperty("members") val members: List<BoardMember> = listOf(),
+    @JsonProperty("projects") val projects: List<String> = listOf(),
     @JsonProperty("createdAt") val createdAt: Instant = Instant.now()
 )

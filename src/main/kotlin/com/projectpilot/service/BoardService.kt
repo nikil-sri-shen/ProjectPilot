@@ -2,25 +2,36 @@ package com.projectpilot.service
 
 import com.projectpilot.db.MongoProvider
 import com.projectpilot.models.Board
+import com.projectpilot.models.Project
 import com.projectpilot.utils.Mailer
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.mongo.MongoClient
 import io.vertx.kotlin.coroutines.await
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import mu.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
 
 object BoardService {
-    private val client: MongoClient = MongoProvider.getClient()
+    val client: MongoClient = MongoProvider.getClient()
 
-    suspend fun generateUniqueBoardId(): String {
-        var id: String
-        do {
-            id = (100000..999999).random().toString()
-            val exists = client.findOne("boards", JsonObject().put("_id", id), null).await() != null
-        } while (exists)
-        return id
+    suspend fun findBoardExists(boardId: String): Boolean{
+        return try {
+            val exists = client.findOne("boards", JsonObject().put("_id", boardId), null).await()
+            if (exists != null) {
+                logger.info { "Board exists with ID: $boardId" }
+                true
+            } else {
+                logger.warn { "No board found with ID: $boardId" }
+                false
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Error checking if board exists with ID: $boardId" }
+            false
+        }
     }
 
     suspend fun createBoard(board: Board): Int {
@@ -282,6 +293,7 @@ object BoardService {
                     .put("createdBy", board.getString("createdBy"))
                     .put("createdAt", board.getString("createdAt"))
                     .put("membersCount", (board.getJsonArray("members") ?: JsonArray()).size())
+                    .put("projectsCount", (board.getJsonArray("projects") ?: JsonArray()).size())
                 // TODO: Later include projects, tasks, etc. in summary
                 logger.info { "Board summary retrieved for ID: $boardId" }
                 summary
@@ -308,6 +320,33 @@ object BoardService {
         } catch (e: Exception) {
             logger.error(e) { "Failed to retrieve all boards" }
             emptyList()
+        }
+    }
+
+    suspend fun getProjectsWithBoardId(boardId: String): List<Project> {
+        try {
+            val board = client.findOne("boards", JsonObject().put("_id", boardId), null).await()
+            if (board == null) {
+                logger.warn { "Board with ID $boardId does not exist." }
+                return emptyList()
+            }
+
+            val projectIds = board.getJsonArray("projects") ?: JsonArray()
+            val projects = mutableListOf<Project>()
+
+            for (id in projectIds) {
+                val projectJson = client.findOne("projects", JsonObject().put("_id", id), null).await()
+                if (projectJson != null) {
+                    val project = com.projectpilot.utils.mapper.readValue(projectJson.encode(), Project::class.java)
+                    projects.add(project)
+                }
+            }
+
+            return projects
+
+        } catch (e: Exception) {
+            logger.error(e) { "Error fetching projects for board ID: $boardId" }
+            return emptyList()
         }
     }
 }
