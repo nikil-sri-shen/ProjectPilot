@@ -8,6 +8,7 @@ import com.projectpilot.service.BoardService
 import com.projectpilot.service.ProjectService
 import com.projectpilot.utils.CommonUtils
 import io.vertx.core.Vertx
+import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject.mapFrom
 import io.vertx.ext.web.Route
 import io.vertx.ext.web.Router
@@ -27,6 +28,9 @@ fun projectRoutes(vertx: Vertx, router: Router) {
     projectRouter.get("/:projectId").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleGetProjectById)
     projectRouter.post("/:projectId").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleUpdateProject)
     projectRouter.delete("/:projectId").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleDeleteProject)
+    projectRouter.get("/:projectId/members").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor", "student")).handler(::handleGetProjectMembers)
+    projectRouter.post("/:projectId/addMember").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleAddMemberToProject)
+    projectRouter.delete("/:projectId/removeMember").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleRemoveProjectMember)
 
     router.mountSubRouter("/projects", projectRouter)
     logger.info("Project routes registered")
@@ -151,6 +155,112 @@ fun handleDeleteProject(ctx: RoutingContext) {
             }
         } catch (e: Exception) {
             logger.error(e) { "Error deleting project" }
+            ctx.response().setStatusCode(500).end("Internal Server Error")
+        }
+    }
+}
+
+fun handleAddMemberToProject(ctx: RoutingContext) {
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            val rawBody = ctx.body().asJsonObject()
+            val boardId = rawBody.getString("boardId")
+            val projectId = ctx.pathParam("projectId")
+            val memberEmail = rawBody.getString("memberEmail")
+            if (boardId.isNullOrEmpty()){
+                ctx.response().setStatusCode(400).end("Board ID is required")
+                return@launch
+            }
+            try {
+                val members = BoardService.getBoardMembers(boardId)
+                if(memberEmail in members){
+                    logger.info("Adding member $memberEmail to project with ID: $projectId")
+                    val role = rawBody.getString("role") ?: "STUDENT"
+                    val addResult = ProjectService.addMemberToProject(projectId, memberEmail, role)
+
+                    when (addResult) {
+                        1 -> ctx.response().setStatusCode(200).end("Member added successfully")
+                        2 -> ctx.response().setStatusCode(404).end("Project not found with ID: $projectId")
+                        3 -> ctx.response().setStatusCode(409).end("Member already exists in the project")
+                        else -> ctx.response().setStatusCode(500).end("Failed to add member to project")
+                    }
+                } else {
+                    ctx.response().setStatusCode(404).end("Member not found in board with ID: $boardId")
+                }
+            } catch (e: Exception) {
+                logger.error(e) { "Error checking board existence" }
+                ctx.response().setStatusCode(500).end("Internal Server Error")
+                return@launch
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Error adding member to project" }
+            ctx.response().setStatusCode(500).end("Internal Server Error")
+        }
+    }
+}
+
+fun handleRemoveProjectMember(ctx: RoutingContext) {
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            val projectId = ctx.pathParam("projectId")
+            val rawBody = ctx.body().asJsonObject()
+            val boardId = rawBody.getString("boardId")
+            val memberEmail = rawBody.getString("memberEmail")
+
+            if (projectId.isNullOrBlank() || memberEmail.isNullOrBlank()) {
+                ctx.response().setStatusCode(400).end("Project ID and member email are required")
+                return@launch
+            }
+
+            if (boardId.isNullOrBlank()) {
+                ctx.response().setStatusCode(400).end("Board ID is required")
+                return@launch
+            }
+
+            try {
+                val members = BoardService.getBoardMembers(boardId)
+                if(memberEmail !in members) {
+                    ctx.response().setStatusCode(404).end("Member not found in board with ID: $boardId")
+                    return@launch
+                }
+                logger.info("Removing member $memberEmail from project with ID: $projectId")
+                val removeResult = ProjectService.removeMemberFromProject(projectId, memberEmail)
+
+                when (removeResult) {
+                    1 -> ctx.response().setStatusCode(200).end("Member removed successfully")
+                    2 -> ctx.response().setStatusCode(404).end("Project not found with ID: $projectId")
+                    3 -> ctx.response().setStatusCode(404).end("Member not found in the project")
+                    4 -> ctx.response().setStatusCode(500).end("Failed to update project members")
+                    else -> ctx.response().setStatusCode(500).end("Failed to remove member from project")
+                }
+            } catch (e: Exception) {
+                logger.error(e) { "Error checking board existence" }
+                ctx.response().setStatusCode(500).end("Internal Server Error")
+                return@launch
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Error removing member from project" }
+            ctx.response().setStatusCode(500).end("Internal Server Error")
+        }
+    }
+}
+
+fun handleGetProjectMembers(ctx: RoutingContext) {
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            logger.info("Handling request to get project members")
+            val projectId = ctx.pathParam("projectId")
+            if (projectId.isNullOrBlank()) {
+                ctx.response().setStatusCode(400).end("Project ID is required")
+                return@launch
+            }
+            logger.info("Fetching members for project with ID: $projectId")
+            val members = ProjectService.getMembersOfProject(projectId)
+            ctx.response()
+                .putHeader("Content-Type", "application/json")
+                    .end((JsonArray(members)).encodePrettily())
+        } catch (e: Exception) {
+            logger.error(e) { "Error fetching project members" }
             ctx.response().setStatusCode(500).end("Internal Server Error")
         }
     }

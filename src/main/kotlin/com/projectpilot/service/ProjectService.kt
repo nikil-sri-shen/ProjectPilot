@@ -2,6 +2,8 @@ package com.projectpilot.service
 
 import com.projectpilot.db.MongoProvider
 import com.projectpilot.models.Project
+import com.projectpilot.models.ProjectMember
+import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.mongo.MongoClient
 import io.vertx.kotlin.coroutines.await
@@ -103,6 +105,93 @@ object ProjectService {
         } catch (e: Exception) {
             logger.error(e) { "Error deleting project with ID: $projectId" }
             3 // Error occurred
+        }
+    }
+
+    suspend fun addMemberToProject(projectId: String, memberEmail: String, role: String): Int {
+        logger.info("Adding member $memberEmail with role $role to project with ID: $projectId")
+        return try {
+            val project = getProjectById(projectId)
+            if (project == null) {
+                logger.warn("Project with ID $projectId not found.")
+                return 2 // Project not found
+            }
+
+            if (project.members.any { it.email == memberEmail }) {
+                logger.warn("Member $memberEmail already exists in project $projectId.")
+                return 3 // Member already exists
+            }
+
+            val updatedMembers = project.members + ProjectMember(memberEmail, role)
+            val updatedMembersJson = JsonArray(updatedMembers.map { JsonObject.mapFrom(it) })
+            val updateResult = client.updateCollection(
+                "projects",
+                JsonObject().put("_id", projectId),
+                JsonObject().put("\$set", JsonObject().put("members", updatedMembersJson))
+            ).await()
+
+            if (updateResult.docModified.toInt() > 0) {
+                logger.info("Member $memberEmail added successfully to project $projectId.")
+                1 // Success
+            } else {
+                logger.warn("Failed to add member $memberEmail to project $projectId.")
+                4 // Update failed
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Error adding member to project with ID: $projectId" }
+            5 // Error occurred
+        }
+    }
+
+    suspend fun removeMemberFromProject(projectId: String, memberEmail: String): Int {
+        logger.info("Removing member $memberEmail from project with ID: $projectId")
+        return try {
+            val project = getProjectById(projectId)
+            if (project == null) {
+                logger.warn("Project with ID $projectId not found.")
+                return 2 // Project not found
+            }
+
+            if (project.members.none { it.email == memberEmail }) {
+                logger.warn("Member $memberEmail does not exist in project $projectId.")
+                return 3 // Member does not exist
+            }
+
+            val updatedMembers = project.members.filter { it.email != memberEmail }
+            val updatedMembersJson = JsonArray(updatedMembers.map { JsonObject.mapFrom(it) })
+            val updateResult = client.updateCollection(
+                "projects",
+                JsonObject().put("_id", projectId),
+                JsonObject().put("\$set", JsonObject().put("members", updatedMembersJson))
+            ).await()
+
+            if (updateResult.docModified.toInt() > 0) {
+                logger.info("Member $memberEmail removed successfully from project $projectId.")
+                1 // Success
+            } else {
+                logger.warn("Failed to remove member $memberEmail from project $projectId.")
+                4 // Update failed
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Error removing member from project with ID: $projectId" }
+            5 // Error occurred
+        }
+    }
+
+    suspend fun getMembersOfProject(projectId: String): List<ProjectMember> {
+        logger.info("Fetching members of project with ID: $projectId")
+        return try {
+            val project = getProjectById(projectId)
+            if (project != null) {
+                logger.info("Members fetched successfully for project ID: $projectId")
+                project.members
+            } else {
+                logger.warn("Project with ID $projectId not found.")
+                emptyList() // Return empty list if project not found
+            }
+        } catch (e: Exception) {
+            logger.error(e) { "Error fetching members of project with ID: $projectId" }
+            emptyList() // Return empty list on error
         }
     }
 }
