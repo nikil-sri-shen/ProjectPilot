@@ -21,5 +21,6 @@ data class Project @JsonCreator constructor(
     @JsonProperty("createdBy") val createdBy: String, // creator email
     @JsonProperty("members") val members: List<ProjectMember> = listOf(),
     @JsonProperty("status") val status: String = "pending", // "pending", "in-progress", "completed"
+    @JsonProperty("tasks") val task: List<String> = listOf(),
     @JsonProperty("createdAt") val createdAt: Instant = Instant.now()
 )
