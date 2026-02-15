@@ -61,14 +61,14 @@ pipeline {
                         docker run -d \
                         --name ${CONTAINER_NAME} \
                         -p ${APP_PORT}:${CONTAINER_PORT} \
-                        -e SERVER_PORT=${APP_PORT}
-                        -e MONGO_URI=$MONGO_URI
-                        -e MONGO_DB_NAME=$MONGO_DB_NAME
-                        -e JWT_SECRET=$JWT_SECRET
-                        -e FROM_EMAIL=$FROM_EMAIL
-                        -e APP_PASSWORD=$APP_PASSWORD
-                        -e SMTP_HOST=$SMTP_HOST
-                        -e SMTP_PORT=$SMTP_PORT
+                        -e SERVER_PORT=${APP_PORT} \
+                        -e MONGO_URI=$MONGO_URI \
+                        -e MONGO_DB_NAME=$MONGO_DB_NAME \
+                        -e JWT_SECRET=$JWT_SECRET \
+                        -e FROM_EMAIL=$FROM_EMAIL \
+                        -e APP_PASSWORD=$APP_PASSWORD \
+                        -e SMTP_HOST=$SMTP_HOST \
+                        -e SMTP_PORT=$SMTP_PORT \
                         ${IMAGE_NAME}:${IMAGE_TAG}
                     """
                 }
