@@ -28,7 +28,7 @@ FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
 # Copy shadow JAR (IMPORTANT: use wildcard)
-COPY --from=builder /app/build/libs/*all.jar app.jar
+COPY --from=builder /app/build/libs/*.jar app.jar
 
 # Expose app port (match your app config!)
 EXPOSE 9090
