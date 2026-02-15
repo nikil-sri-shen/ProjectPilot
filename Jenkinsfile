@@ -34,14 +34,24 @@ pipeline {
 
         stage('Build Docker Image') {
             steps {
-                sh "docker rmi -f ${IMAGE_NAME}:${IMAGE_TAG} || true"
-                sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                sh '''
+                    if [ "$(docker images -q $IMAGE_NAME:$IMAGE_TAG)" ]; then
+                        docker rmi -f $IMAGE_NAME:$IMAGE_TAG
+                    fi
+
+                    docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                '''
             }
         }
 
         stage('Stop Old Container') {
             steps {
-                sh "docker rm -f ${CONTAINER_NAME} || true"
+                sh '''
+                    if [ "$(docker ps -aq -f name=$CONTAINER_NAME)" ]; then
+                        docker stop $CONTAINER_NAME || true
+                        docker rm $CONTAINER_NAME || true
+                    fi
+                '''
             }
         }
 
