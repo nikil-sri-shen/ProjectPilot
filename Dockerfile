@@ -1,32 +1,37 @@
-FROM ubuntu:latest
-LABEL authors="nikilsrishen"
-
+# ----------------------------
 # Stage 1: Build
+# ----------------------------
 FROM eclipse-temurin:21-jdk-jammy AS builder
 
 WORKDIR /app
 
-# Copy Gradle wrapper + build scripts
+# Copy Gradle wrapper and build files
 COPY gradlew .
 COPY gradle/ gradle/
 COPY build.gradle.kts settings.gradle.kts ./
 
-# Copy source
+# Copy source code
 COPY src/ ./src/
 
-# Build the fat JAR inside container
-RUN ./gradlew shadowJar -x test --quiet
+# Make wrapper executable
+RUN chmod +x gradlew
 
-# Stage 2: Runtime image
+# Build fat JAR
+RUN ./gradlew clean shadowJar -x test --quiet
+
+
+# ----------------------------
+# Stage 2: Runtime
+# ----------------------------
 FROM eclipse-temurin:21-jre-jammy
 
 WORKDIR /app
 
-# Copy the fat JAR from builder stage
-COPY --from=builder /app/build/libs/ProjectPilot-0.1.0.jar ./ProjectPilot.jar
+# Copy shadow JAR (IMPORTANT: use wildcard)
+COPY --from=builder /app/build/libs/*all.jar app.jar
 
-# Expose API port
+# Expose app port (match your app config!)
 EXPOSE 9090
 
-# Run the app
-CMD ["java", "-jar", "ProjectPilot.jar"]
+# Run application
+CMD ["java", "-jar", "app.jar"]
