@@ -57,11 +57,11 @@ pipeline {
                     string(credentialsId: 'smtp-port', variable: 'SMTP_PORT')
                 ]) {
 
-                    sh """
+                    sh '''
                         docker run -d \
-                        --name ${CONTAINER_NAME} \
-                        -p ${APP_PORT}:${CONTAINER_PORT} \
-                        -e SERVER_PORT=${APP_PORT} \
+                        --name $CONTAINER_NAME \
+                        -p $APP_PORT:$CONTAINER_PORT \
+                        -e SERVER_PORT=$APP_PORT \
                         -e MONGO_URI=$MONGO_URI \
                         -e MONGO_DB_NAME=$MONGO_DB_NAME \
                         -e JWT_SECRET=$JWT_SECRET \
@@ -69,8 +69,8 @@ pipeline {
                         -e APP_PASSWORD=$APP_PASSWORD \
                         -e SMTP_HOST=$SMTP_HOST \
                         -e SMTP_PORT=$SMTP_PORT \
-                        ${IMAGE_NAME}:${IMAGE_TAG}
-                    """
+                        $IMAGE_NAME:$IMAGE_TAG
+                    '''
                 }
             }
         }
