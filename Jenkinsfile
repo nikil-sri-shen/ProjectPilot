@@ -52,7 +52,7 @@ pipeline {
                     string(credentialsId: 'mongo-db-name', variable: 'MONGO_DB_NAME'),
                     string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET'),
                     string(credentialsId: 'from-email', variable: 'FROM_EMAIL'),
-                    string(credentialsId: 'app-password', variable: 'APP_PASSWORD')
+                    string(credentialsId: 'app-password', variable: 'APP_PASSWORD'),
                     string(credentialsId: 'smtp-host', variable: 'SMTP_HOST'),
                     string(credentialsId: 'smtp-port', variable: 'SMTP_PORT')
                 ]) {
