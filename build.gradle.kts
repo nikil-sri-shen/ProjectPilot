@@ -59,6 +59,13 @@ tasks {
     }
 }
 
+tasks.named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
+    archiveBaseName.set("ProjectPilot")
+    archiveClassifier.set("")
+    archiveVersion.set("0.1.0")
+}
+
+
 tasks.test {
     useJUnitPlatform()
 }
