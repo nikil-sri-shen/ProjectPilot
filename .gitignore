@@ -46,6 +46,7 @@ bin/
 
 ### properties ###
 *.properties
+!gradle/wrapper/gradle-wrapper.properties
 
 ### logs ###
 /logs
