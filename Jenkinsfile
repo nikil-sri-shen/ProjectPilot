@@ -28,7 +28,7 @@ pipeline {
             steps {
                 sh '''
                     chmod +x gradlew
-                    ./gradlew clean build -x test
+                    ./gradlew clean shadowJar -x test
                 '''
             }
         }
