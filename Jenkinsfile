@@ -59,22 +59,31 @@ pipeline {
                     string(credentialsId: 'smtp-host', variable: 'SMTP_HOST'),
                     string(credentialsId: 'smtp-port', variable: 'SMTP_PORT')
                 ]) {
-
                     sh '''
-                        docker run -d \
-                        --name $CONTAINER_NAME \
-                        -p $APP_PORT:$CONTAINER_PORT \
-                        -e SERVER_PORT=$APP_PORT \
-                        -e MONGO_URI=$MONGO_URI \
-                        -e MONGO_DB_NAME=$MONGO_DB_NAME \
-                        -e JWT_SECRET=$JWT_SECRET \
-                        -e FROM_EMAIL=$FROM_EMAIL \
-                        -e APP_PASSWORD=$APP_PASSWORD \
-                        -e SMTP_HOST=$SMTP_HOST \
-                        -e SMTP_PORT=$SMTP_PORT \
-                        $IMAGE_NAME:$IMAGE_TAG
+                        export MONGO_URI="$MONGO_URI"
+                        export MONGO_DB_NAME="$MONGO_DB_NAME"
+                        export JWT_SECRET="$JWT_SECRET"
+                        export FROM_EMAIL="$FROM_EMAIL"
+                        export APP_PASSWORD="$APP_PASSWORD"
+                        export SMTP_HOST="$SMTP_HOST"
+                        export SMTP_PORT="$SMTP_PORT"
                     '''
                 }
+
+                sh '''
+                    docker run -d \
+                    --name projectpilot-container \
+                    -p 9090:9090 \
+                    -e SERVER_PORT=9090 \
+                    -e MONGO_URI="$MONGO_URI" \
+                    -e MONGO_DB_NAME="$MONGO_DB_NAME" \
+                    -e JWT_SECRET="$JWT_SECRET" \
+                    -e FROM_EMAIL="$FROM_EMAIL" \
+                    -e APP_PASSWORD="$APP_PASSWORD" \
+                    -e SMTP_HOST="$SMTP_HOST" \
+                    -e SMTP_PORT="$SMTP_PORT" \
+                    projectpilot:latest
+                '''
             }
         }
     }
