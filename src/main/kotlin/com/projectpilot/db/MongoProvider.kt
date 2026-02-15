@@ -3,8 +3,9 @@ package com.projectpilot.db
 import com.projectpilot.utils.Config
 import io.vertx.core.Vertx
 import io.vertx.ext.mongo.MongoClient
+import io.github.oshai.kotlinlogging.KotlinLogging
 
-private val logger = mu.KotlinLogging.logger {}
+private val logger = KotlinLogging.logger {}
 
 object MongoProvider {
     private lateinit var client : MongoClient
@@ -32,5 +33,14 @@ object MongoProvider {
             throw IllegalStateException("MongoDB client is not initialized. Call init() first.")
         }
         return client
+    }
+
+    fun close() {
+        if (::client.isInitialized) {
+            client.close()
+            logger.info("MongoDB client closed successfully.")
+        } else {
+            logger.info("MongoDB client was not initialized, no need to close.")
+        }
     }
 }

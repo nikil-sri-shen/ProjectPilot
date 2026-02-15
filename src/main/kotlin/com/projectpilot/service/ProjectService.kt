@@ -6,8 +6,7 @@ import com.projectpilot.models.ProjectMember
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.mongo.MongoClient
-import io.vertx.kotlin.coroutines.await
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 
 
 private val logger = KotlinLogging.logger {  }

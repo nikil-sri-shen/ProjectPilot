@@ -2,8 +2,9 @@ package com.projectpilot.middleware
 
 import io.vertx.core.Handler
 import io.vertx.ext.web.RoutingContext
+import io.github.oshai.kotlinlogging.KotlinLogging
 
-private val logger = mu.KotlinLogging.logger {}
+private val logger = KotlinLogging.logger {}
 
 fun authorizeRole(vararg allowedRoles: String): Handler<RoutingContext> = Handler { ctx ->
     val userRole = ctx.get<String>("role")?.lowercase()

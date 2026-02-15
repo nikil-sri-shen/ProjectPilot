@@ -1,5 +1,11 @@
 plugins {
     kotlin("jvm") version "2.1.20"
+    application
+    id("com.github.johnrengelman.shadow") version "8.1.1"
+}
+
+application {
+    mainClass.set("com.projectpilot.RestApiServerKt")
 }
 
 group = "com.projectpilot"
@@ -11,18 +17,17 @@ repositories {
 
 dependencies {
     testImplementation(kotlin("test"))
-    // Vert.x dependencies
-    implementation("io.vertx:vertx-core:4.5.1")
-    implementation("io.vertx:vertx-web:4.5.1")
-    implementation("io.vertx:vertx-lang-kotlin-coroutines:4.5.1")
+    // Vert.x 5 dependencies
+    implementation("io.vertx:vertx-core:5.0.7")
+    implementation("io.vertx:vertx-web:5.0.7")
+    implementation("io.vertx:vertx-lang-kotlin-coroutines:5.0.7")
     runtimeOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.10.2")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.10.2")
     // Logging dependencies
-    implementation("org.slf4j:slf4j-api:2.0.17")
-    implementation("ch.qos.logback:logback-classic:1.5.18")
-    implementation("io.github.microutils:kotlin-logging:3.0.5")
+    implementation("ch.qos.logback:logback-classic:1.5.13")
+    implementation("io.github.oshai:kotlin-logging-jvm:5.1.0")
     // MongoDB driver
-    implementation("io.vertx:vertx-mongo-client:4.5.1")
+    implementation("io.vertx:vertx-mongo-client:5.0.7")
     // JSON serialization
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.19.1")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.19.2")
@@ -36,15 +41,27 @@ dependencies {
     implementation("at.favre.lib:bcrypt:0.10.2")
 
     // Email sending
-    implementation("com.sun.mail:jakarta.mail:2.0.1")
+    implementation("com.sun.mail:jakarta.mail:2.0.2")
+
+    // Redis client
+    implementation("io.vertx:vertx-redis-client:5.0.7")
 
     runtimeOnly("io.netty:netty-resolver-dns-native-macos:4.1.109.Final:osx-aarch_64")
 
+}
+
+tasks {
+    shadowJar {
+        archiveClassifier.set("all")
+        manifest {
+            attributes["Main-Class"] = "com.projectpilot.RestApiServerKt"
+        }
+    }
 }
 
 tasks.test {
     useJUnitPlatform()
 }
 kotlin {
-    jvmToolchain(22)
+    jvmToolchain(21)
 }

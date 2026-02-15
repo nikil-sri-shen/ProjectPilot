@@ -13,7 +13,7 @@ import io.vertx.ext.web.RoutingContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger {  }
 
@@ -27,7 +27,8 @@ fun taskRoutes(vertx: Vertx, router: Router) {
     taskRouter.post("/:taskId/assign").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleAssignTask)
     taskRouter.post("/:taskId/status").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor", "student")).handler(::handleUpdateTaskStatus)
 
-    router.mountSubRouter("/tasks", taskRouter)
+    // mount sub-router under /tasks
+    router.route("/tasks/*").subRouter(taskRouter)
     logger.info { "Task routes registered" }
 }
 

@@ -18,7 +18,7 @@ import io.vertx.ext.web.RoutingContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.time.Instant
 
 private val logger = KotlinLogging.logger {}
@@ -35,7 +35,7 @@ fun authRoutes(vertx: Vertx, router: Router) {
     authRouter.get("/profile").handler(jwtMiddleware()).handler(::handleProfile)
     authRouter.put("/profile").handler(jwtMiddleware()).handler(::handleUpdateProfile)
     authRouter.delete("/profile").handler(jwtMiddleware()).handler(::handleDeleteProfile).handler(::handleLogout)
-    router.mountSubRouter("/auth", authRouter)
+    router.route("/auth/*").subRouter(authRouter)
     logger.info { "Auth routes registered" }
 }
 

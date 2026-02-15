@@ -3,9 +3,10 @@ package com.projectpilot.middleware
 import com.projectpilot.utils.JwtConfig
 import io.vertx.core.Handler
 import io.vertx.ext.web.RoutingContext
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.vertx.ext.web.Route
 
-private val logger = mu.KotlinLogging.logger {}
+private val logger = KotlinLogging.logger {}
 
 fun jwtMiddleware() : Handler<RoutingContext> = Handler { ctx ->
     val token = ctx.request().getHeader("Authorization")?.removePrefix("Bearer ")

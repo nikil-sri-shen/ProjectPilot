@@ -16,7 +16,7 @@ import io.vertx.ext.web.RoutingContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import org.bson.json.JsonObject
 
 private val logger = KotlinLogging.logger {  }
@@ -28,11 +28,12 @@ fun projectRoutes(vertx: Vertx, router: Router) {
     projectRouter.get("/:projectId").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleGetProjectById)
     projectRouter.post("/:projectId").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleUpdateProject)
     projectRouter.delete("/:projectId").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleDeleteProject)
-    projectRouter.get("/:projectId/members").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor", "student")).handler(::handleGetProjectMembers)
+//    projectRouter.get("/:projectId/members").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor", "student")).handler(::handleGetProjectMembers)
     projectRouter.post("/:projectId/addMember").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleAddMemberToProject)
     projectRouter.delete("/:projectId/removeMember").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleRemoveProjectMember)
 
-    router.mountSubRouter("/projects", projectRouter)
+    // mount sub-router under /projects
+    router.route("/projects/*").subRouter(projectRouter)
     logger.info("Project routes registered")
 }
 
@@ -219,7 +220,7 @@ fun handleRemoveProjectMember(ctx: RoutingContext) {
 
             try {
                 val members = BoardService.getBoardMembers(boardId)
-                if(memberEmail !in members) {
+                if (memberEmail !in members) {
                     ctx.response().setStatusCode(404).end("Member not found in board with ID: $boardId")
                     return@launch
                 }
@@ -240,27 +241,6 @@ fun handleRemoveProjectMember(ctx: RoutingContext) {
             }
         } catch (e: Exception) {
             logger.error(e) { "Error removing member from project" }
-            ctx.response().setStatusCode(500).end("Internal Server Error")
-        }
-    }
-}
-
-fun handleGetProjectMembers(ctx: RoutingContext) {
-    CoroutineScope(Dispatchers.IO).launch {
-        try {
-            logger.info("Handling request to get project members")
-            val projectId = ctx.pathParam("projectId")
-            if (projectId.isNullOrBlank()) {
-                ctx.response().setStatusCode(400).end("Project ID is required")
-                return@launch
-            }
-            logger.info("Fetching members for project with ID: $projectId")
-            val members = ProjectService.getMembersOfProject(projectId)
-            ctx.response()
-                .putHeader("Content-Type", "application/json")
-                    .end((JsonArray(members)).encodePrettily())
-        } catch (e: Exception) {
-            logger.error(e) { "Error fetching project members" }
             ctx.response().setStatusCode(500).end("Internal Server Error")
         }
     }

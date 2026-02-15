@@ -13,7 +13,7 @@ import io.vertx.ext.web.RoutingContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 
 private val logger = KotlinLogging.logger {}
 
@@ -33,7 +33,8 @@ fun boardRoutes(vertx: Vertx, router: Router) {
     boardRouter.get("/:boardId/summary").handler(jwtMiddleware()).handler(authorizeRole("admin","professor")).handler(::handleBoardSummary)
     boardRouter.get("/:boardId/projects").handler(jwtMiddleware()).handler(authorizeRole("admin","professor")).handler(::handleProjectsByBoardId)
 
-    router.mountSubRouter("/board", boardRouter)
+    // mount sub-router under /board
+    router.route("/board/*").subRouter(boardRouter)
     logger.info { "Board routes registered" }
 }
 

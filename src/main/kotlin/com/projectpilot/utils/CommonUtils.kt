@@ -2,7 +2,6 @@ package com.projectpilot.utils
 
 import com.projectpilot.db.MongoProvider
 import io.vertx.core.json.JsonObject
-import io.vertx.kotlin.coroutines.await
 import io.vertx.ext.mongo.MongoClient
 
 object CommonUtils {
