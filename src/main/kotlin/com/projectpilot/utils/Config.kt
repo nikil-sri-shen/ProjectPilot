@@ -17,7 +17,7 @@ object Config {
             ?: throw IllegalStateException("Missing required config key: $key")
     }
 
-    val serverPort: Int
+    val server_port: Int
         get() = get("SERVER_PORT", "9090").toInt()
 
     val mongoUri: String
