@@ -35,10 +35,6 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh '''
-                    if [ "$(docker images -q $IMAGE_NAME:$IMAGE_TAG)" ]; then
-                        docker rmi -f $IMAGE_NAME:$IMAGE_TAG
-                    fi
-
                     docker build -t $IMAGE_NAME:$IMAGE_TAG .
                 '''
             }
@@ -47,10 +43,7 @@ pipeline {
         stage('Stop Old Container') {
             steps {
                 sh '''
-                    if [ "$(docker ps -aq -f name=$CONTAINER_NAME)" ]; then
-                        docker stop $CONTAINER_NAME || true
-                        docker rm $CONTAINER_NAME || true
-                    fi
+                    docker rm $CONTAINER_NAME || true
                 '''
             }
         }
@@ -69,9 +62,9 @@ pipeline {
 
                     sh '''
                         docker run -d \
-                        --name projectpilot-container \
-                        -p 9090:9090 \
-                        -e SERVER_PORT=9090 \
+                        --name $CONTAINER_NAME \
+                        -p $APP_PORT:$CONTAINER_PORT \
+                        -e SERVER_PORT=$APP_PORT \
                         -e MONGO_URI=$MONGO_URI \
                         -e MONGO_DB_NAME=$MONGO_DB_NAME \
                         -e JWT_SECRET=$JWT_SECRET \
@@ -79,7 +72,7 @@ pipeline {
                         -e APP_PASSWORD=$APP_PASSWORD \
                         -e SMTP_HOST=$SMTP_HOST \
                         -e SMTP_PORT=$SMTP_PORT \
-                        projectpilot:latest
+                        $IMAGE_NAME:$IMAGE_TAG
                     '''
                 }
             }
