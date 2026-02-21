@@ -2,6 +2,7 @@ package com.projectpilot.service
 
 import com.projectpilot.db.MongoProvider
 import com.projectpilot.models.Task
+import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.mongo.MongoClient
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -152,6 +153,41 @@ object TaskService {
         } catch (e: Exception) {
             logger.error(e) { "Error fetching task with ID: $taskId" }
             null
+        }
+    }
+
+    suspend fun getTaskStatsByProjectIds(projectIds: List<String>): JsonObject {
+        if (projectIds.isEmpty()) {
+            return JsonObject()
+                .put("total", 0)
+                .put("pending", 0)
+                .put("inProgress", 0)
+                .put("completed", 0)
+        }
+
+        return try {
+            val query = JsonObject().put("projectId", JsonObject().put("\$in", JsonArray(projectIds)))
+            val tasks = client.find("tasks", query).await()
+
+            val pending = tasks.count { (it.getString("status") ?: "pending").equals("pending", ignoreCase = true) }
+            val inProgress = tasks.count {
+                val status = it.getString("status") ?: ""
+                status.equals("in-progress", ignoreCase = true) || status.equals("on going", ignoreCase = true)
+            }
+            val completed = tasks.count { (it.getString("status") ?: "").equals("completed", ignoreCase = true) }
+
+            JsonObject()
+                .put("total", tasks.size)
+                .put("pending", pending)
+                .put("inProgress", inProgress)
+                .put("completed", completed)
+        } catch (e: Exception) {
+            logger.error(e) { "Failed to get task stats for projects: ${projectIds.joinToString(",")}" }
+            JsonObject()
+                .put("total", 0)
+                .put("pending", 0)
+                .put("inProgress", 0)
+                .put("completed", 0)
         }
     }
 }

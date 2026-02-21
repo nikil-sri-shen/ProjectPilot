@@ -8,18 +8,20 @@ object CommonUtils {
     suspend fun generateUniqueBoardId(): String {
         val client: MongoClient = MongoProvider.getClient()
         var id: String
+        var exists: Boolean
         do {
             id = (100000..999999).random().toString()
-            val exists = client.findOne("boards", JsonObject().put("_id", id), null).await() != null
+            exists = client.findOne("boards", JsonObject().put("_id", id), null).await() != null
         } while (exists)
         return id
     }
     suspend fun generateUniqueProjectId(): String {
         val client: MongoClient = MongoProvider.getClient()
         var id: String
+        var exists: Boolean
         do {
             id = (100000..999999).random().toString()
-            val exists = client.findOne("projects", JsonObject().put("_id", id), null).await() != null
+            exists = client.findOne("projects", JsonObject().put("_id", id), null).await() != null
         } while (exists)
         return id
     }
@@ -27,9 +29,10 @@ object CommonUtils {
     suspend fun generateUniqueTaskId(): String {
         val client: MongoClient = MongoProvider.getClient()
         var id: String
+        var exists: Boolean
         do {
             id = (100000..999999).random().toString()
-            val exists = client.findOne("tasks", JsonObject().put("_id", id), null).await() != null
+            exists = client.findOne("tasks", JsonObject().put("_id", id), null).await() != null
         } while (exists)
         return id
     }

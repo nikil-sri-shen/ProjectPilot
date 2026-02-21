@@ -28,7 +28,7 @@ class RestApiServer: CoroutineVerticle() {
         router.get("/").handler { ctx ->
             ctx.response()
                 .putHeader("content-type", "text/plain")
-                .end("Welcome to ProjectPilot API!")
+                .end("Welcome to ProjectPilot API - Event & Organizer Collaboration Platform")
             logger.info { "Received request on /" }
         }
 
