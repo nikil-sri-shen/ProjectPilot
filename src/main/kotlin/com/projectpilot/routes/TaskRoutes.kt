@@ -20,15 +20,15 @@ private val logger = KotlinLogging.logger {  }
 fun taskRoutes(vertx: Vertx, router: Router) {
     val taskRouter = Router.router(vertx)
 
-    taskRouter.post("/create").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor", "student")).handler(::handleCreateTask)
-    taskRouter.get("/:taskId").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor", "student")).handler(::handleGetTaskById)
-    taskRouter.delete("/:taskId").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor", "student")).handler(::handleDeleteTask)
-    taskRouter.post("/:taskId/update").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor","student")).handler(::handleUpdateTask)
-    taskRouter.post("/:taskId/assign").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleAssignTask)
-    taskRouter.post("/:taskId/status").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor", "student")).handler(::handleUpdateTaskStatus)
+    taskRouter.post("/create").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR", "PARTICIPANT")).handler(::handleCreateTask)
+    taskRouter.get("/:taskId").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR", "PARTICIPANT", "JUDGE")).handler(::handleGetTaskById)
+    taskRouter.delete("/:taskId").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR", "PARTICIPANT")).handler(::handleDeleteTask)
+    taskRouter.post("/:taskId/update").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR", "PARTICIPANT")).handler(::handleUpdateTask)
+    taskRouter.post("/:taskId/assign").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR")).handler(::handleAssignTask)
+    taskRouter.post("/:taskId/status").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR", "PARTICIPANT")).handler(::handleUpdateTaskStatus)
 
-    // mount sub-router under /tasks
-    router.route("/tasks/*").subRouter(taskRouter)
+    // mount sub-router under /work-items
+    router.route("/work-items/*").subRouter(taskRouter)
     logger.info { "Task routes registered" }
 }
 

@@ -11,6 +11,7 @@ import at.favre.lib.crypto.bcrypt.BCrypt
 import com.projectpilot.middleware.jwtMiddleware
 import com.projectpilot.models.SafeUser
 import com.projectpilot.service.EmailService
+import com.projectpilot.utils.AppRoles
 import com.projectpilot.utils.Mailer
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.web.Router
@@ -109,7 +110,11 @@ fun handleEmailVerification(ctx: RoutingContext) {
             val token = body.getString("token")
             val password = body.getString("password")
             val username = body.getString("username")
-            val role = body.getString("role") ?: "STUDENT" // Default to USER if not provided
+            val role = body.getString("role") ?: AppRoles.PARTICIPANT
+            if (!AppRoles.isValid(role)) {
+                ctx.response().setStatusCode(400).end("Invalid role")
+                return@launch
+            }
 
             if (!EmailService.verifyToken(email, token)) {
                 ctx.response().setStatusCode(400).end("Invalid or expired verification token")
@@ -161,7 +166,11 @@ fun handleSignin(ctx: RoutingContext) {
             logger.info("Login attempt for email: $email, valid: ${valid.verified}")
             if (valid.verified) {
                 logger.info { "Login successful for email: $email" }
-                val token = JwtConfig.generateToken(email, user?.username ?: "unknown", user?.role ?: "STUDENT")
+                val token = JwtConfig.generateToken(
+                    email,
+                    user?.username ?: "unknown",
+                    user?.role ?: AppRoles.PARTICIPANT
+                )
 
                 val safeUser = SafeUser(
                     email = user!!.email,

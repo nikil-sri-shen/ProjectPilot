@@ -38,7 +38,7 @@ object JwtConfig {
             mapOf(
                 "email" to claims.subject,
                 "username" to (claims["username"] as? String ?: ""),
-                "role" to (claims["role"] as? String ?: "") // Default to STUDENT if no role is provided
+                "role" to (claims["role"] as? String ?: "")
             )
         } catch (e: Exception) {
             null

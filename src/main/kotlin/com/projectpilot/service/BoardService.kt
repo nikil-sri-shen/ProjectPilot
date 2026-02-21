@@ -3,6 +3,7 @@ package com.projectpilot.service
 import com.projectpilot.db.MongoProvider
 import com.projectpilot.models.Board
 import com.projectpilot.models.Project
+import com.projectpilot.utils.AppRoles
 import com.projectpilot.utils.Mailer
 import io.vertx.core.json.JsonArray
 import io.vertx.core.json.JsonObject
@@ -124,6 +125,7 @@ object BoardService {
             val code = EmailService.createVerificationToken(toEmail)
             if (code == null) return 3
 
+            if (!AppRoles.isValid(role)) return 6
             val boardName = board.getString("name")
             val subject = "Invitation to join board: $boardName"
             val content = """
@@ -147,6 +149,7 @@ object BoardService {
         val isValid = EmailService.verifyToken(email, token)
         if (!isValid) return false
 
+        if (!AppRoles.isValid(role)) return false
         return addMemberToBoard(boardId, email, role)
     }
 
@@ -162,6 +165,7 @@ object BoardService {
                 logger.warn { "Member already exists in board: $memberEmail" }
                 return false
             }
+            if (!AppRoles.isValid(role)) return false
             val newMember = JsonObject().put("email", memberEmail).put("role", role)
             members.add(newMember)
             val updateResult = client.updateCollection(
@@ -259,6 +263,7 @@ object BoardService {
                 logger.warn { "Member not found in board: $memberEmail" }
                 return false
             }
+            if (!AppRoles.isValid(newRole)) return false
             (memberToUpdate as JsonObject).put("role", newRole)
             val updateResult = client.updateCollection(
                 "boards",

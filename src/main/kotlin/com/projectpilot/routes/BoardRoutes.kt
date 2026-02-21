@@ -5,6 +5,8 @@ import com.projectpilot.middleware.jwtMiddleware
 import com.projectpilot.models.Board
 import com.projectpilot.models.BoardMember
 import com.projectpilot.service.BoardService
+import com.projectpilot.service.TaskService
+import com.projectpilot.utils.AppRoles
 import com.projectpilot.utils.CommonUtils
 import com.projectpilot.utils.mapper
 import io.vertx.core.Vertx
@@ -20,21 +22,22 @@ private val logger = KotlinLogging.logger {}
 fun boardRoutes(vertx: Vertx, router: Router) {
     val boardRouter = Router.router(vertx)
 
-    boardRouter.post("/create").handler(jwtMiddleware()).handler(authorizeRole("admin")).handler(::handleCreateBoard)
-    boardRouter.get("/myBoards").handler(jwtMiddleware()).handler(authorizeRole("admin","professor")).handler(::handleMyBoards)
-    boardRouter.get("/boards").handler(jwtMiddleware()).handler(authorizeRole("admin","professor")).handler(::handleBoards)
-    boardRouter.get("/:boardId").handler(jwtMiddleware()).handler(authorizeRole("admin","professor")).handler(::handleBoardsWithId)
-    boardRouter.delete("/:boardId").handler(jwtMiddleware()).handler(authorizeRole("admin")).handler(::handleDeleteBoard)
-    boardRouter.post("/:boardId/update").handler(jwtMiddleware()).handler(authorizeRole("admin")).handler(::handleBoardUpdate)
-    boardRouter.post("/:boardId/invite").handler(jwtMiddleware()).handler(authorizeRole("admin")).handler(::handlerSendInvite)
-    boardRouter.post("/:boardId/verify-invite").handler(jwtMiddleware()).handler(authorizeRole("admin","professor")).handler(::handlerVerifyInvite)
-    boardRouter.get("/:boardId/members").handler(jwtMiddleware()).handler(authorizeRole("admin","professor")).handler(::handleBoardMembers)
-    boardRouter.post("/:boardId/members").handler(jwtMiddleware()).handler(authorizeRole("admin")).handler(::handleRemoveBoardMembers)
-    boardRouter.get("/:boardId/summary").handler(jwtMiddleware()).handler(authorizeRole("admin","professor")).handler(::handleBoardSummary)
-    boardRouter.get("/:boardId/projects").handler(jwtMiddleware()).handler(authorizeRole("admin","professor")).handler(::handleProjectsByBoardId)
+    boardRouter.post("/create").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER")).handler(::handleCreateBoard)
+    boardRouter.get("/myBoards").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR")).handler(::handleMyBoards)
+    boardRouter.get("/boards").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR")).handler(::handleBoards)
+    boardRouter.get("/:boardId").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR")).handler(::handleBoardsWithId)
+    boardRouter.delete("/:boardId").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER")).handler(::handleDeleteBoard)
+    boardRouter.post("/:boardId/update").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER")).handler(::handleBoardUpdate)
+    boardRouter.post("/:boardId/invite").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER")).handler(::handlerSendInvite)
+    boardRouter.post("/:boardId/verify-invite").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR")).handler(::handlerVerifyInvite)
+    boardRouter.get("/:boardId/members").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR", "JUDGE")).handler(::handleBoardMembers)
+    boardRouter.post("/:boardId/members").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER")).handler(::handleRemoveBoardMembers)
+    boardRouter.get("/:boardId/summary").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR", "JUDGE")).handler(::handleBoardSummary)
+    boardRouter.get("/:boardId/projects").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR", "JUDGE")).handler(::handleProjectsByBoardId)
+    boardRouter.get("/:boardId/command-center").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR", "JUDGE")).handler(::handleEventCommandCenter)
 
-    // mount sub-router under /board
-    router.route("/board/*").subRouter(boardRouter)
+    // mount sub-router under /events
+    router.route("/events/*").subRouter(boardRouter)
     logger.info { "Board routes registered" }
 }
 
@@ -55,7 +58,7 @@ fun handleCreateBoard(ctx: RoutingContext) {
                 name = boardName,
                 description = description,
                 createdBy = email,
-                members = listOf(BoardMember(email, "ADMIN"))
+                members = listOf(BoardMember(email, AppRoles.ORGANIZER))
             )
             val success = BoardService.createBoard(board)
             when (success) {
@@ -184,10 +187,9 @@ fun handleBoardUpdate(ctx: RoutingContext) {
 fun handlerSendInvite(ctx: RoutingContext) {
     CoroutineScope(Dispatchers.IO).launch {
         try {
-            val senderRole = ctx.get<String>("role")?.lowercase()
-            senderRole
-            if(senderRole != "admin") {
-                ctx.response().setStatusCode(403).end("Only Admin can send invites")
+            val senderRole = ctx.get<String>("role")
+            if (senderRole != AppRoles.ORGANIZER) {
+                ctx.response().setStatusCode(403).end("Only organizers can send invites")
                 logger.warn { "Unauthorized attempt to send invite by user with role $senderRole" }
                 return@launch
             }
@@ -213,6 +215,10 @@ fun handlerSendInvite(ctx: RoutingContext) {
                 4 -> {
                     ctx.response().setStatusCode(200).end("Invite sent successfully")
                     logger.info { "Invite sent successfully to $toEmail for board $boardId" }
+                }
+                6 -> {
+                    ctx.response().setStatusCode(400).end("Invalid role")
+                    logger.info { "Invalid role supplied for invite: $role" }
                 }
             }
         } catch (e: Exception) {
@@ -274,9 +280,9 @@ fun handleBoardMembers(ctx: RoutingContext) {
 fun handleRemoveBoardMembers(ctx: RoutingContext) {
     CoroutineScope(Dispatchers.IO).launch {
         try {
-            val role = ctx.get<String>("role")?.lowercase()
-            if(role != "admin") {
-                ctx.response().setStatusCode(403).end("Only Admin can remove members")
+            val role = ctx.get<String>("role")
+            if (role != AppRoles.ORGANIZER) {
+                ctx.response().setStatusCode(403).end("Only organizers can remove members")
                 logger.warn { "Unauthorized attempt to remove members by user with role $role" }
                 return@launch
             }
@@ -419,6 +425,43 @@ fun handleProjectsByBoardId(ctx: RoutingContext) {
             }
         } catch (e: Exception) {
             logger.error(e) { "Error retrieving projects for board with ID: ${ctx.pathParam("boardId")}" }
+            ctx.response().setStatusCode(500).end("Internal server error")
+        }
+    }
+}
+
+fun handleEventCommandCenter(ctx: RoutingContext) {
+    CoroutineScope(Dispatchers.IO).launch {
+        try {
+            val boardId = ctx.pathParam("boardId")
+            if (boardId.isBlank()) {
+                ctx.response().setStatusCode(400).end("Event workspace ID is required")
+                return@launch
+            }
+
+            val board = BoardService.getBoardById(boardId)
+            if (board == null) {
+                ctx.response().setStatusCode(404).end("Event workspace not found")
+                return@launch
+            }
+
+            val projects = BoardService.getProjectsWithBoardId(boardId)
+            val projectIds = projects.map { it._id }
+            val taskStats = TaskService.getTaskStatsByProjectIds(projectIds)
+
+            val response = io.vertx.core.json.JsonObject()
+                .put("eventId", board._id)
+                .put("eventName", board.name)
+                .put("membersCount", board.members.size)
+                .put("teamsCount", projects.size)
+                .put("tasks", taskStats)
+
+            ctx.response()
+                .putHeader("Content-Type", "application/json")
+                .setStatusCode(200)
+                .end(response.encode())
+        } catch (e: Exception) {
+            logger.error(e) { "Error building command center summary for board ${ctx.pathParam("boardId")}" }
             ctx.response().setStatusCode(500).end("Internal server error")
         }
     }

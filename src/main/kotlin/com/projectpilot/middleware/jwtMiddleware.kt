@@ -1,10 +1,10 @@
 package com.projectpilot.middleware
 
+import com.projectpilot.utils.AppRoles
 import com.projectpilot.utils.JwtConfig
 import io.vertx.core.Handler
 import io.vertx.ext.web.RoutingContext
 import io.github.oshai.kotlinlogging.KotlinLogging
-import io.vertx.ext.web.Route
 
 private val logger = KotlinLogging.logger {}
 
@@ -23,9 +23,14 @@ fun jwtMiddleware() : Handler<RoutingContext> = Handler { ctx ->
     try {
         val claims = JwtConfig.validateToken(token)
         if (claims != null) {
+            val role = claims["role"]
+            if (!AppRoles.isValid(role)) {
+                ctx.response().setStatusCode(401).end("Unauthorized: Invalid role claim")
+                return@Handler
+            }
             ctx.put("userEmail", claims["email"])
             ctx.put("username", claims["username"])
-            ctx.put("role", claims["role"]) // Default to STUDENT if no role is provided
+            ctx.put("role", role)
             ctx.next()
         } else {
             ctx.response().setStatusCode(401).end("Unauthorized: Invalid token")

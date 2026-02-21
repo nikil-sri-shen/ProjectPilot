@@ -6,6 +6,7 @@ import com.projectpilot.models.Project
 import com.projectpilot.models.ProjectMember
 import com.projectpilot.service.BoardService
 import com.projectpilot.service.ProjectService
+import com.projectpilot.utils.AppRoles
 import com.projectpilot.utils.CommonUtils
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonArray
@@ -24,16 +25,15 @@ private val logger = KotlinLogging.logger {  }
 fun projectRoutes(vertx: Vertx, router: Router) {
     val projectRouter = Router.router(vertx)
 
-    projectRouter.post("/create").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleCreateProject)
-    projectRouter.get("/:projectId").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleGetProjectById)
-    projectRouter.post("/:projectId").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleUpdateProject)
-    projectRouter.delete("/:projectId").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleDeleteProject)
-//    projectRouter.get("/:projectId/members").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor", "student")).handler(::handleGetProjectMembers)
-    projectRouter.post("/:projectId/addMember").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleAddMemberToProject)
-    projectRouter.delete("/:projectId/removeMember").handler(jwtMiddleware()).handler(authorizeRole("admin", "professor")).handler(::handleRemoveProjectMember)
+    projectRouter.post("/create").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR")).handler(::handleCreateProject)
+    projectRouter.get("/:projectId").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR", "JUDGE")).handler(::handleGetProjectById)
+    projectRouter.post("/:projectId").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR")).handler(::handleUpdateProject)
+    projectRouter.delete("/:projectId").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR")).handler(::handleDeleteProject)
+    projectRouter.post("/:projectId/addMember").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR")).handler(::handleAddMemberToProject)
+    projectRouter.delete("/:projectId/removeMember").handler(jwtMiddleware()).handler(authorizeRole("ORGANIZER", "MENTOR")).handler(::handleRemoveProjectMember)
 
-    // mount sub-router under /projects
-    router.route("/projects/*").subRouter(projectRouter)
+    // mount sub-router under /teams
+    router.route("/teams/*").subRouter(projectRouter)
     logger.info("Project routes registered")
 }
 
@@ -176,7 +176,11 @@ fun handleAddMemberToProject(ctx: RoutingContext) {
                 val members = BoardService.getBoardMembers(boardId)
                 if(memberEmail in members){
                     logger.info("Adding member $memberEmail to project with ID: $projectId")
-                    val role = rawBody.getString("role") ?: "STUDENT"
+                    val role = rawBody.getString("role") ?: AppRoles.PARTICIPANT
+                    if (!AppRoles.isValid(role)) {
+                        ctx.response().setStatusCode(400).end("Invalid member role")
+                        return@launch
+                    }
                     val addResult = ProjectService.addMemberToProject(projectId, memberEmail, role)
 
                     when (addResult) {

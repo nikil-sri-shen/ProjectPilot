@@ -9,7 +9,7 @@ import java.util.UUID
 @JsonIgnoreProperties(ignoreUnknown = true)
 data class BoardMember @JsonCreator constructor(
     @JsonProperty("email") val email: String,
-    @JsonProperty("role") val role: String // OWNER | PROFESSOR
+    @JsonProperty("role") val role: String // ORGANIZER | MENTOR | JUDGE | PARTICIPANT
 )
 
 @JsonIgnoreProperties(ignoreUnknown = true)

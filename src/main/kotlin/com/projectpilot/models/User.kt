@@ -22,5 +22,5 @@ data class SafeUser(
     val username: String,
     val bio: String?,
     val status: String?,
-    val role: String? // Default role is STUDENT
+    val role: String? // Default role is PARTICIPANT
 )
